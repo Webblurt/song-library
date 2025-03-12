@@ -1,0 +1,294 @@
+openapi: 3.0.0
+info:
+  title: Song Library API
+  version: v1.0.0
+  description: API for managing a song library, including lyrics, group details, and release dates.
+paths:
+  /songs:
+    get:
+      summary: Get song lyrics
+      description: Retrieves song lyrics based on song ID or group/song name, with pagination.
+      parameters:
+        - in: query
+          name: song_id
+          schema:
+            type: string
+          description: The ID of the song.
+        - in: query
+          name: group
+          schema:
+            type: string
+          description: The name of the music group.
+        - in: query
+          name: song
+          schema:
+            type: string
+          description: The name of the song.
+        - in: query
+          name: page
+          schema:
+            type: string
+            default: "1"
+          description: The page of lyrics to retrieve. Starts with 1.
+        - in: query
+          name: limit
+          schema:
+            type: string
+          description: The number of verses to retrieve (not working now).
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SongLyrics'
+        '400':
+          description: Bad request (missing parameters)
+          content:
+            application/json:
+                schema:
+                    $ref: '#/components/schemas/Error'
+        '404':
+          description: Song not found
+          content:
+            application/json:
+                schema:
+                    $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+                schema:
+                    $ref: '#/components/schemas/Error'
+    post:
+      summary: Create a new song
+      description: Adds a new song to the library.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewSongReq'
+      responses:
+        '201':
+          description: Song created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Song created successfully
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+                schema:
+                    $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+                schema:
+                    $ref: '#/components/schemas/Error'
+    put:
+      summary: Update an existing song
+      description: Modifies details of an existing song.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSongReq'
+      responses:
+        '200':
+          description: Song updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Song updated successfully
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+                schema:
+                    $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+                schema:
+                    $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete a song
+      description: Removes a song from the library.
+      parameters:
+        - in: query
+          name: song_id
+          schema:
+            type: string
+          description: The ID of the song to delete.
+          required: true
+      responses:
+        '200':
+          description: Song deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Song deleted successfully
+        '400':
+          description: Invalid request body
+          content:
+            application/json:
+                schema:
+                    $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+                schema:
+                    $ref: '#/components/schemas/Error'
+  /library:
+    get:
+      summary: Get library data
+      description: Retrieves a list of songs from the library with optional filters.
+      parameters:
+        - in: query
+          name: group
+          schema:
+            type: string
+          description: Filter by group name.
+        - in: query
+          name: song
+          schema:
+            type: string
+          description: Filter by song name.
+        - in: query
+          name: release_date
+          schema:
+            type: string
+            format: date
+          description: Filter by release date (YYYY-MM-DD).
+        - in: query
+          name: limit
+          schema:
+            type: string
+          description: The maximum number of results to return.
+        - in: query
+          name: offset
+          schema:
+            type: string
+          description: The offset for pagination.
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Library'
+        '404':
+          description: Library data not found
+          content:
+            application/json:
+                schema:
+                    $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+                schema:
+                    $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    SongLyrics:
+      type: object
+      properties:
+        id:
+          type: string
+        group:
+          type: string
+        song:
+          type: string
+        lyrics:
+          type: string
+        page:
+          type: integer
+        totalVerses:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
+        nextPage:
+          type: integer
+        prevPage:
+          type: integer
+    Error:
+        type: object
+        properties:
+            message:
+                type: string
+                description: error description
+    NewSongReq:
+      type: object
+      properties:
+        group:
+          type: string
+          description: The name of the music group.
+          example: "The Beatles"
+        song:
+          type: string
+          description: The name of the song.
+          example: "Hey Jude"
+
+    UpdateSongReq:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The ID of the song to update.
+        group:
+          type: string
+          description: The name of the music group.
+        song:
+          type: string
+          description: The name of the song.
+        release_date:
+          type: string
+          format: date
+          description: The release date of the song (YYYY-MM-DD).
+        link:
+          type: string
+          description: External link to the song info.
+    DeleteSongReq:
+        type: object
+        properties:
+            id:
+                type: string
+                description: The ID of the song to delete.
+    Library:
+      type: array
+      items:
+          type: object
+          properties:
+            id:
+              type: string
+            group_name:
+              type: string
+            song_name:
+              type: string
+            release_date:
+              type: string
+              format: date
+            link:
+              type: string

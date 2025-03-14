@@ -29,6 +29,7 @@ type Service struct {
 
 func NewService(client *clients.ExternalAPIClient, repo *repositories.Repository, log *utils.Logger) (*Service, error) {
 	if repo == nil || client == nil {
+		log.Error("Repository or client is nil")
 		return nil, errors.New("repository or client is nil")
 	}
 

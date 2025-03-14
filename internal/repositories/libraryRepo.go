@@ -8,32 +8,40 @@ import (
 )
 
 func (r *Repository) GetLibrary(ctx context.Context, filters models.LibraryFilters) (models.Library, error) {
-	query := `SELECT id, group_name, song_name, release_date FROM songs WHERE 1=1`
-	countQuery := `SELECT COUNT(*) FROM songs WHERE 1=1`
+	query := `
+		SELECT s.id, g.name AS group_name, s.song, s.release_date 
+		FROM songs s
+		JOIN groups g ON s.group_id = g.id
+		WHERE 1=1`
+	countQuery := `
+		SELECT COUNT(*) 
+		FROM songs s
+		JOIN groups g ON s.group_id = g.id
+		WHERE 1=1`
 	args := []interface{}{}
 	countArgs := []interface{}{}
 	argID := 1
 	countArgID := 1
 
 	if filters.Group != "" {
-		query += fmt.Sprintf(" AND group_name ILIKE $%d", argID)
-		countQuery += fmt.Sprintf(" AND group_name ILIKE $%d", countArgID)
+		query += fmt.Sprintf(" AND g.name ILIKE $%d", argID)
+		countQuery += fmt.Sprintf(" AND g.name ILIKE $%d", countArgID)
 		args = append(args, "%"+filters.Group+"%")
 		countArgs = append(countArgs, "%"+filters.Group+"%")
 		argID++
 		countArgID++
 	}
 	if filters.Song != "" {
-		query += fmt.Sprintf(" AND song_name ILIKE $%d", argID)
-		countQuery += fmt.Sprintf(" AND song_name ILIKE $%d", countArgID)
+		query += fmt.Sprintf(" AND s.song ILIKE $%d", argID)
+		countQuery += fmt.Sprintf(" AND s.song ILIKE $%d", countArgID)
 		args = append(args, "%"+filters.Song+"%")
 		countArgs = append(countArgs, "%"+filters.Song+"%")
 		argID++
 		countArgID++
 	}
 	if filters.ReleaseDate != "" {
-		query += fmt.Sprintf(" AND release_date = $%d", argID)
-		countQuery += fmt.Sprintf(" AND release_date = $%d", countArgID)
+		query += fmt.Sprintf(" AND s.release_date = $%d", argID)
+		countQuery += fmt.Sprintf(" AND s.release_date = $%d", countArgID)
 		args = append(args, filters.ReleaseDate)
 		countArgs = append(countArgs, filters.ReleaseDate)
 		argID++
@@ -55,7 +63,7 @@ func (r *Repository) GetLibrary(ctx context.Context, filters models.LibraryFilte
 		return models.Library{}, err
 	}
 
-	query += fmt.Sprintf(" ORDER BY release_date DESC LIMIT $%d OFFSET $%d", argID, argID+1)
+	query += fmt.Sprintf(" ORDER BY s.release_date DESC LIMIT $%d OFFSET $%d", argID, argID+1)
 	args = append(args, limit, offset)
 
 	rows, err := r.DB.Query(ctx, query, args...)

@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	models "song-library/internal/models"
 	utils "song-library/internal/utils"
@@ -48,6 +49,9 @@ func (r *Repository) Create(ctx context.Context, entity models.Entity) error {
 
 func (r *Repository) Update(ctx context.Context, entity models.Entity) error {
 	setClause, values := buildUpdateQuery(entity)
+	if setClause == "" {
+		return errors.New("no fields to update")
+	}
 
 	query := fmt.Sprintf("UPDATE %s SET %s WHERE id = $%d", entity.EntityName, setClause, len(values)+1)
 	values = append(values, entity.StringParameters["id"])
@@ -101,6 +105,9 @@ func buildUpdateQuery(entity models.Entity) (setClause string, values []interfac
 	i := 1
 
 	for key, val := range entity.StringParameters {
+		if val == "" {
+			continue
+		}
 		setParts = append(setParts, fmt.Sprintf("%s = $%d", key, i))
 		values = append(values, val)
 		i++
@@ -111,9 +118,15 @@ func buildUpdateQuery(entity models.Entity) (setClause string, values []interfac
 		i++
 	}
 	for key, val := range entity.TimeParameters {
+		if val.IsZero() {
+			continue
+		}
 		setParts = append(setParts, fmt.Sprintf("%s = $%d", key, i))
 		values = append(values, val)
 		i++
+	}
+	if len(setParts) == 0 {
+		return "", nil
 	}
 
 	return strings.Join(setParts, ", "), values

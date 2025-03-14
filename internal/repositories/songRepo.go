@@ -5,43 +5,57 @@ import (
 	"fmt"
 	models "song-library/internal/models"
 	"strconv"
-	"strings"
 )
 
 func (r *Repository) GetSong(ctx context.Context, filters models.SongFilters) (models.SongLyrics, error) {
-	query := `SELECT lyrics FROM songs WHERE 1=1`
+	query := `
+		SELECT l.text, g.name AS group_name, s.song
+		FROM lyrics l
+		JOIN songs s ON l.song_id = s.id
+		JOIN groups g ON s.group_id = g.id
+		WHERE 1=1`
 	args := []interface{}{}
 	argID := 1
 
 	if filters.SongID != "" {
-		query += fmt.Sprintf(" AND id = $%d", argID)
+		query += fmt.Sprintf(" AND s.id = $%d", argID)
 		args = append(args, filters.SongID)
 		argID++
 	} else {
 		if filters.Group != "" {
-			query += fmt.Sprintf(" AND group_name ILIKE $%d", argID)
+			query += fmt.Sprintf(" AND g.name ILIKE $%d", argID)
 			args = append(args, "%"+filters.Group+"%")
 			argID++
 		}
 		if filters.Song != "" {
-			query += fmt.Sprintf(" AND song_name ILIKE $%d", argID)
+			query += fmt.Sprintf(" AND s.song ILIKE $%d", argID)
 			args = append(args, "%"+filters.Song+"%")
 			argID++
 		}
 	}
 
-	r.log.Debug("Executing query: ", query)
+	query += " ORDER BY l.verse_number"
 
-	var lyrics string
-	err := r.DB.QueryRow(ctx, query, args...).Scan(&lyrics)
+	rows, err := r.DB.Query(ctx, query, args...)
 	if err != nil {
-		if strings.Contains(err.Error(), "no rows") {
-			return models.SongLyrics{}, err
-		}
 		return models.SongLyrics{}, err
 	}
+	defer rows.Close()
 
-	verses := strings.Split(lyrics, "\n\n")
+	var verses []string
+	for rows.Next() {
+		var verse string
+		err := rows.Scan(&verse)
+		if err != nil {
+			return models.SongLyrics{}, err
+		}
+		verses = append(verses, verse)
+	}
+
+	if len(verses) == 0 {
+		return models.SongLyrics{}, fmt.Errorf("no lyrics found")
+	}
+
 	totalVerses := len(verses)
 
 	page, err := strconv.Atoi(filters.Page)
@@ -50,7 +64,7 @@ func (r *Repository) GetSong(ctx context.Context, filters models.SongFilters) (m
 	}
 
 	if page > totalVerses {
-		return models.SongLyrics{}, err
+		return models.SongLyrics{}, fmt.Errorf("page out of range")
 	}
 
 	return models.SongLyrics{
